@@ -33,6 +33,18 @@ jobs:
         terraform validate
       working-directory: ./infrastructure/terraform
 
+    - name: Security scan Terraform files for misconfigurations
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'config'
+        scan-ref: './infrastructure/terraform'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+        security-checks: 'config'
+      continue-on-error: false
+
     - name: Lint YAML files
       run: |
         if command -v yamllint >/dev/null 2>&1; then
@@ -166,6 +178,18 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
 
+    - name: Run Trivy security scan for critical CVEs in filesystem
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        severity: 'CRITICAL'
+        security-checks: 'vuln,config,secret'
+      continue-on-error: false
+
     - name: Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v2
       with:
@@ -180,7 +204,9 @@ jobs:
         exit-code: '1'
         ignore-unfixed: true
         vuln-type: 'os,library'
-        severity: 'CRITICAL,HIGH'
+        severity: 'CRITICAL'
+        security-checks: 'vuln,config,secret'
+      continue-on-error: false
 
   push-to-ecr:
     runs-on: ubuntu-latest
