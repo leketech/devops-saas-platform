@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: platform
+  labels:
+    app: promtail
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      containers:
+      - name: promtail
+        image: grafana/promtail:2.9.2
+        args:
+        - -config.file=/etc/promtail/promtail-config.yaml
+        ports:
+        - name: http
+          containerPort: 9080
+        volumeMounts:
+        - name: config
+          mountPath: /etc/promtail
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: runlogjournal
+          mountPath: /run/log/journal
+          readOnly: true
+        - name: dmesg
+          mountPath: /dev/kmsg
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: config
+        configMap:
+          name: promtail-config
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: runlogjournal
+        hostPath:
+          path: /run/log/journal
+      - name: dmesg
+        hostPath:
+          path: /dev/kmsg
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: platform
+data:
+  promtail-config.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+
+    clients:
+      - url: http://loki.platform.svc.cluster.local:3100/loki/api/v1/push
+
+    scrape_configs:
+      - job_name: containers
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: container-logs
+              __path__: /var/log/containers/*multitenant*.log
+        pipeline_stages:
+          - match:
+              selector: '{job="container-logs"}'
+              stages:
+                - cri: {}
+                - template:
+                    source: output
+                    template: "{{ .Output }}"
+                - labeldrop:
+                    - filename
+          - match:
+              selector: '{job="container-logs", app="multitenant-api"}'
+              stages:
+                - json:
+                    expressions:
+                      level: level
+                      message: message
+                      tenant_id: "tenant_id"
+                - labels:
+                    level:
+                    tenant_id:
