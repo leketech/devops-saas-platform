@@ -15,6 +15,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Tenant represents a tenant in the multi-tenant system
@@ -45,6 +47,10 @@ type App struct {
 	DB     *pgxpool.Pool
 	Redis  *redis.Client
 	Router *mux.Router
+	// Prometheus metrics
+	RequestDuration *prometheus.HistogramVec
+	RequestCounter  *prometheus.CounterVec
+	ActiveRequests  prometheus.Gauge
 }
 
 // Middleware to extract tenant ID from JWT
@@ -79,6 +85,45 @@ func (a *App) tenantMiddleware(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), "tenant_id", claims.TenantID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// Metrics middleware to track request duration and count
+func (a *App) metricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		a.ActiveRequests.Inc()
+		defer a.ActiveRequests.Dec()
+
+		// Create a response writer that captures the status code
+		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(wrapped, r)
+
+		duration := time.Since(start).Seconds()
+
+		a.RequestDuration.WithLabelValues(
+			r.URL.Path,
+			r.Method,
+			strconv.Itoa(wrapped.statusCode),
+		).Observe(duration)
+
+		a.RequestCounter.WithLabelValues(
+			r.URL.Path,
+			r.Method,
+			strconv.Itoa(wrapped.statusCode),
+		).Inc()
+	})
+}
+
+// ResponseWriter wrapper to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
 
 // Middleware for rate limiting using Redis
@@ -258,9 +303,37 @@ func (a *App) initialize() error {
 		return err
 	}
 
+	// Initialize Prometheus metrics
+	a.RequestDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: "http_request_duration_seconds",
+			Help: "Duration of HTTP requests in seconds",
+		},
+		[]string{"path", "method", "status"},
+	)
+
+	a.RequestCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"path", "method", "status"},
+	)
+
+	a.ActiveRequests = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "http_active_requests",
+			Help: "Number of active HTTP requests",
+		},
+	)
+
 	// Setup routes
+	a.Router.Use(a.metricsMiddleware) // Metrics middleware should be first to capture all requests
 	a.Router.Use(a.rateLimitMiddleware)
 	a.Router.Use(a.tenantMiddleware)
+
+	// Add metrics endpoint
+	a.Router.PathPrefix("/metrics").Handler(promhttp.Handler())
 
 	a.Router.HandleFunc("/health", a.healthHandler).Methods("GET")
 	a.Router.HandleFunc("/api/data", a.getDataHandler).Methods("GET")
