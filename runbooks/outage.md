@@ -117,6 +117,7 @@ This runbook provides step-by-step procedures for responding to service outages 
 3. **Check dependencies**:
    ```bash
    # Check database connectivity
+   # NOTE: Replace <password> with the actual database password
    kubectl run debug --image=postgres:13 --rm -it --env="PGPASSWORD=<password>" -- psql -h postgres-service -U postgres -c "SELECT 1;"
    
    # Check Redis connectivity

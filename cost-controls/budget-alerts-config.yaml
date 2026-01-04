@@ -101,6 +101,9 @@ kind: ServiceAccount
 metadata:
   name: budget-monitor
   namespace: platform
+  annotations:
+    # This annotation should be templated with the actual IRSA role ARN during deployment
+    # eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/budget-monitor-role
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

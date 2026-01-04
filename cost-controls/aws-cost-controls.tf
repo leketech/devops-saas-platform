@@ -137,11 +137,49 @@ resource "aws_iam_policy" "cost_management_policy" {
   })
 }
 
+# IAM Role for Service Account (IRSA) for budget monitoring
+resource "aws_iam_role" "budget_monitor_role" {
+  name = "budget-monitor-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = "arn:aws:iam::${var.aws_account_id}:oidc-provider/${var.oidc_provider_url}"
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${var.oidc_provider_url}:sub" = "system:serviceaccount:platform:budget-monitor"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "budget_monitor_policy_attachment" {
+  role       = aws_iam_role.budget_monitor_role.name
+  policy_arn = aws_iam_policy.cost_management_policy.arn
+}
+
 # Variables for the cost controls configuration
 variable "environment" {
   description = "The environment name (dev, staging, prod)"
   type        = string
   default     = "prod"
+}
+
+variable "aws_account_id" {
+  description = "AWS Account ID for resource creation"
+  type        = string
+}
+
+variable "oidc_provider_url" {
+  description = "OIDC Provider URL for EKS cluster"
+  type        = string
 }
 
 variable "budget_alert_emails" {
@@ -165,4 +203,9 @@ output "budget_alerts_sns_topic_arn" {
 output "cost_management_policy_arn" {
   description = "ARN of the cost management IAM policy"
   value       = aws_iam_policy.cost_management_policy.arn
+}
+
+output "budget_monitor_role_arn" {
+  description = "ARN of the budget monitor IAM role"
+  value       = aws_iam_role.budget_monitor_role.arn
 }

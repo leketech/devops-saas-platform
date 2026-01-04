@@ -133,6 +133,7 @@ Rollback is initiated when:
    ```bash
    # If using database migrations, you may need to revert
    # Example for schema changes (if applicable):
+   # NOTE: Replace <password> with the actual database password
    kubectl run -it --rm rollback-job --image=postgres:13 --env="PGPASSWORD=<password>" --command -- psql -h postgres-service -U postgres -d saas_db -c "BEGIN; -- your rollback SQL; COMMIT;"
    ```
 

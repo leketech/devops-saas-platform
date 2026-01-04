@@ -27,6 +27,7 @@ This runbook provides step-by-step procedures for deploying the multi-tenant Saa
    docker build -t multitenant-api:v1.x.x .
    
    # Tag and push to ECR
+   # NOTE: Replace <account_id> with your actual AWS account ID
    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account_id>.dkr.ecr.us-east-1.amazonaws.com
    docker tag multitenant-api:v1.x.x <account_id>.dkr.ecr.us-east-1.amazonaws.com/multitenant-api:v1.x.x
    docker push <account_id>.dkr.ecr.us-east-1.amazonaws.com/multitenant-api:v1.x.x
@@ -35,6 +36,7 @@ This runbook provides step-by-step procedures for deploying the multi-tenant Saa
 3. **Update deployment manifest**:
    ```bash
    # Update the image in the deployment file
+   # NOTE: Replace <account_id> with your actual AWS account ID
    sed -i 's|image: multitenant-api:.*|image: <account_id>.dkr.ecr.us-east-1.amazonaws.com/multitenant-api:v1.x.x|' api/k8s-deployment.yaml
    ```
 
