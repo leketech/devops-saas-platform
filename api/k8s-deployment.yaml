@@ -15,6 +15,7 @@ spec:
       labels:
         app: multitenant-api
     spec:
+      serviceAccountName: multitenant-api-sa
       containers:
       - name: api
         image: multitenant-api:latest
