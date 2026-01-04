@@ -1,0 +1,54 @@
+# Terraform sensitive files
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.auto.tfvars
+.terraform/
+
+# Environment specific files
+.env
+.env.local
+.env.production
+.env.development
+
+# Credentials and secrets
+**/credentials
+**/config.json
+**/secrets/**
+**/secret/**
+
+# AWS credentials
+.aws/
+.aws/credentials
+.aws/config
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Icon?
+.DS_Store
+
+# Application build artifacts
+bin/
+*.exe
+*.dll
+*.so
+
+# Logs
+*.log
+logs/
+
+# Local configuration
+local.settings.json
