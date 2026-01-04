@@ -17,6 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"go.uber.org/zap"
 )
 
 // Tenant represents a tenant in the multi-tenant system
@@ -47,10 +51,14 @@ type App struct {
 	DB     *pgxpool.Pool
 	Redis  *redis.Client
 	Router *mux.Router
+	Logger *zap.Logger
 	// Prometheus metrics
 	RequestDuration *prometheus.HistogramVec
 	RequestCounter  *prometheus.CounterVec
 	ActiveRequests  prometheus.Gauge
+	ErrorCounter    *prometheus.CounterVec
+	DBConnections   *prometheus.GaugeVec
+	RedisOperations *prometheus.CounterVec
 }
 
 // Middleware to extract tenant ID from JWT
@@ -107,11 +115,23 @@ func (a *App) metricsMiddleware(next http.Handler) http.Handler {
 			strconv.Itoa(wrapped.statusCode),
 		).Observe(duration)
 
+		tenantID := getTenantID(r)
 		a.RequestCounter.WithLabelValues(
 			r.URL.Path,
 			r.Method,
 			strconv.Itoa(wrapped.statusCode),
+			tenantID,
 		).Inc()
+
+		// Record error metrics if status code indicates an error
+		if wrapped.statusCode >= 400 {
+			a.ErrorCounter.WithLabelValues(
+				r.URL.Path,
+				r.Method,
+				strconv.Itoa(wrapped.statusCode),
+				tenantID,
+			).Inc()
+		}
 	})
 }
 
@@ -172,6 +192,14 @@ func getTenantID(r *http.Request) string {
 
 // Health check endpoint
 func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
+	tenantID := getTenantID(r)
+	a.Logger.Info("Health check requested",
+		zap.String("tenant_id", tenantID),
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+		zap.String("remote_addr", r.RemoteAddr),
+	)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(APIResponse{
 		Status:  "success",
@@ -183,9 +211,20 @@ func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) getDataHandler(w http.ResponseWriter, r *http.Request) {
 	tenantID := getTenantID(r)
 	if tenantID == "" {
+		a.Logger.Error("Tenant ID not found in context",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.String("remote_addr", r.RemoteAddr),
+		)
 		http.Error(w, "Tenant ID not found", http.StatusInternalServerError)
 		return
 	}
+
+	a.Logger.Info("Get data requested",
+		zap.String("tenant_id", tenantID),
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+	)
 
 	// Example query that uses tenant isolation
 	query := `
@@ -198,7 +237,12 @@ func (a *App) getDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := a.DB.Query(r.Context(), query, tenantID)
 	if err != nil {
-		log.Printf("Database query error: %v", err)
+		a.Logger.Error("Database query error",
+			zap.String("tenant_id", tenantID),
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -212,7 +256,12 @@ func (a *App) getDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := rows.Scan(&id, &name, &createdAt, &updatedAt, &isActive)
 		if err != nil {
-			log.Printf("Row scan error: %v", err)
+			a.Logger.Error("Row scan error",
+				zap.String("tenant_id", tenantID),
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.Error(err),
+			)
 			continue
 		}
 
@@ -237,15 +286,32 @@ func (a *App) getDataHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	tenantID := getTenantID(r)
 	if tenantID == "" {
+		a.Logger.Error("Tenant ID not found in context",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.String("remote_addr", r.RemoteAddr),
+		)
 		http.Error(w, "Tenant ID not found", http.StatusInternalServerError)
 		return
 	}
+
+	a.Logger.Info("Create user requested",
+		zap.String("tenant_id", tenantID),
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+	)
 
 	var req struct {
 		Name string `json:"name"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		a.Logger.Error("Invalid request body",
+			zap.String("tenant_id", tenantID),
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -260,10 +326,22 @@ func (a *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var userID string
 	err := a.DB.QueryRow(r.Context(), query, tenantID, req.Name).Scan(&userID)
 	if err != nil {
-		log.Printf("Database insert error: %v", err)
+		a.Logger.Error("Database insert error",
+			zap.String("tenant_id", tenantID),
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
+
+	a.Logger.Info("User created successfully",
+		zap.String("tenant_id", tenantID),
+		zap.String("user_id", userID),
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(APIResponse{
@@ -317,7 +395,7 @@ func (a *App) initialize() error {
 			Name: "http_requests_total",
 			Help: "Total number of HTTP requests",
 		},
-		[]string{"path", "method", "status"},
+		[]string{"path", "method", "status", "tenant_id"},
 	)
 
 	a.ActiveRequests = promauto.NewGauge(
@@ -326,6 +404,35 @@ func (a *App) initialize() error {
 			Help: "Number of active HTTP requests",
 		},
 	)
+
+	a.ErrorCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_errors_total",
+			Help: "Total number of HTTP request errors",
+		},
+		[]string{"path", "method", "status", "tenant_id"},
+	)
+
+	a.DBConnections = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "pgxpool_connections",
+			Help: "Database connection pool metrics",
+		},
+		[]string{"pool", "state", "namespace"},
+	)
+
+	a.RedisOperations = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "redis_operations_total",
+			Help: "Total number of Redis operations",
+		},
+		[]string{"operation", "status"},
+	)
+
+	// Initialize DB connection metrics
+	a.DBConnections.WithLabelValues("default", "total", "platform").Set(float64(a.DB.Stat().MaxConns()))
+	a.DBConnections.WithLabelValues("default", "idle", "platform").Set(float64(a.DB.Stat().MaxConns() - a.DB.Stat().AcquiredConns()))
+	a.DBConnections.WithLabelValues("default", "acquired", "platform").Set(float64(a.DB.Stat().AcquiredConns()))
 
 	// Setup routes
 	a.Router.Use(a.metricsMiddleware) // Metrics middleware should be first to capture all requests
@@ -343,15 +450,22 @@ func (a *App) initialize() error {
 }
 
 func main() {
+	// Initialize logger
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal("Failed to initialize logger:", err)
+	}
+	defer logger.Sync()
+
 	// Initialize database connection
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
+		logger.Fatal("DATABASE_URL environment variable is required")
 	}
 
 	db, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
@@ -370,11 +484,12 @@ func main() {
 		DB:     db,
 		Redis:  rdb,
 		Router: mux.NewRouter(),
+		Logger: logger,
 	}
 
 	// Initialize the app
 	if err := app.initialize(); err != nil {
-		log.Fatal("Failed to initialize app:", err)
+		logger.Fatal("Failed to initialize app", zap.Error(err))
 	}
 
 	// Start server
@@ -383,6 +498,6 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, app.Router))
+	logger.Info("Server starting", zap.String("port", port))
+	logger.Fatal("Failed to start server", zap.Error(http.ListenAndServe(":"+port, app.Router)))
 }
