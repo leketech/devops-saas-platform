@@ -3,6 +3,7 @@ module "vpc" {
   environment           = "dev"
   vpc_cidr              = "10.10.0.0/16"
   flow_logs_retention   = 14
+  map_public_ip_on_launch = false
 }
 
 module "eks" {
@@ -11,7 +12,7 @@ module "eks" {
   kubernetes_version  = "1.29"
   vpc_id              = module.vpc.vpc_id
   subnet_ids          = module.vpc.private_subnets
-  endpoint_public_access = true
+  endpoint_public_access = false
   environment         = "dev"
 
   # Node group tuning (use module defaults if you prefer)
@@ -26,6 +27,5 @@ module "eks" {
   node_disk_size = 30
 
   # Security configuration
-  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]  # In production, use more restrictive CIDRs
   node_security_group_egress_cidrs   = ["0.0.0.0/0"]  # In production, restrict as needed
 }
