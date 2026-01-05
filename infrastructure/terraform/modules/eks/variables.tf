@@ -91,3 +91,15 @@ variable "environment" {
   description = "Environment name"
   type        = string
 }
+
+variable "cluster_endpoint_public_access_cidrs" {
+  description = "List of CIDR blocks to allow access to the EKS cluster endpoint when public access is enabled"
+  type        = list(string)
+  default     = ["10.0.0.0/8"]  # Use more restrictive CIDR in production
+}
+
+variable "node_security_group_egress_cidrs" {
+  description = "List of CIDR blocks for node security group egress rules"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]  # Restrict this in production as needed
+}

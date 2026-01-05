@@ -54,7 +54,7 @@ resource "aws_security_group_rule" "cluster_ingress_workstation_https" {
   from_port                = 443
   to_port                  = 443
   protocol                 = "tcp"
-  cidr_blocks              = ["0.0.0.0/0"]
+  cidr_blocks              = var.cluster_endpoint_public_access_cidrs
   security_group_id        = aws_security_group.cluster_security_group.id
 }
 
@@ -173,12 +173,15 @@ resource "aws_iam_role_policy" "cluster_autoscaler" {
           "autoscaling:SetDesiredCapacity",
           "autoscaling:TerminateInstanceInAutoScalingGroup"
         ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-          }
-        }
+        Resource = aws_eks_node_group.on_demand.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
+        Resource = aws_eks_node_group.spot.arn
       }
     ]
   })
@@ -201,7 +204,7 @@ resource "aws_security_group" "node_security_group" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.node_security_group_egress_cidrs
   }
 
   tags = {

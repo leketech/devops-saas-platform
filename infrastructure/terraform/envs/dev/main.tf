@@ -24,4 +24,8 @@ module "eks" {
   spot_max_size     = 4
 
   node_disk_size = 30
+
+  # Security configuration
+  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]  # In production, use more restrictive CIDRs
+  node_security_group_egress_cidrs   = ["0.0.0.0/0"]  # In production, restrict as needed
 }
