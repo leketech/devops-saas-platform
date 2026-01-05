@@ -41,8 +41,7 @@ jobs:
         format: 'table'
         exit-code: '1'
         ignore-unfixed: true
-        severity: 'CRITICAL,HIGH'
-        skip-vuln-ids: 'AVD-AWS-0164'
+        severity: 'CRITICAL'
       continue-on-error: false
 
     - name: Lint YAML files
