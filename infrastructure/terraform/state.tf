@@ -28,23 +28,25 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
       kms_master_key_id = aws_kms_key.s3_encryption_key.arn
     }
   }
+}
 
-  # KMS Key for S3 Encryption
-  resource "aws_kms_key" "s3_encryption_key" {
-    description             = "KMS key for S3 bucket encryption"
-    deletion_window_in_days = 7
-    enable_key_rotation     = true
+# KMS Key for S3 Encryption
+resource "aws_kms_key" "s3_encryption_key" {
+  description             = "KMS key for S3 bucket encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
 
-    tags = {
-      Name = "s3-encryption-key"
-    }
-  }
-
-  resource "aws_kms_alias" "s3_encryption_key_alias" {
-    name          = "alias/s3-terraform-state"
-    target_key_id = aws_kms_key.s3_encryption_key.key_id
+  tags = {
+    Name = "s3-encryption-key"
   }
 }
+
+resource "aws_kms_alias" "s3_encryption_key_alias" {
+  name          = "alias/s3-terraform-state"
+  target_key_id = aws_kms_key.s3_encryption_key.key_id
+}
+
+# Block public access to S3 bucket
 
 # Block public access to S3 bucket
 resource "aws_s3_bucket_public_access_block" "terraform_state" {
