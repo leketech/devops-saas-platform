@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -14,9 +14,9 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "DevOps SaaS"
-      ManagedBy   = "Terraform"
-      CreatedAt   = timestamp()
+      Project   = "DevOps SaaS"
+      ManagedBy = "Terraform"
+      CreatedAt = timestamp()
     }
   }
 }
