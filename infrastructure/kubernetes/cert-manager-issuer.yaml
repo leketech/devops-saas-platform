@@ -1,0 +1,38 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-root
+spec:
+  selfSigned: {}
+---
+# This CA Issuer is signed by the self-signed issuer above
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: saas-root-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: saas-platform-ca
+  secretName: root-secret
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  issuerRef:
+    name: selfsigned-root
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: saas-ca
+spec:
+  ca:
+    secretName: root-secret

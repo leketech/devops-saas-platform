@@ -1,0 +1,53 @@
+{
+  "Comment": "Delete and recreate ACME TXT records as simple records (not MultiValueAnswer)",
+  "Changes": [
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.api.globepay.space.",
+        "Type": "TXT",
+        "SetIdentifier": "\"2T_z8hGVGWVUayY7aJsp3oD8B7SODAkoVaolQjgzFt4\"",
+        "MultiValueAnswer": true,
+        "TTL": 10,
+        "ResourceRecords": [
+          { "Value": "\"2T_z8hGVGWVUayY7aJsp3oD8B7SODAkoVaolQjgzFt4\"" }
+        ]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.app.globepay.space.",
+        "Type": "TXT",
+        "SetIdentifier": "\"cUagI4e3HQ7BGQPtJR9TnPJh0V01r4apoCtUSqC83PE\"",
+        "MultiValueAnswer": true,
+        "TTL": 10,
+        "ResourceRecords": [
+          { "Value": "\"cUagI4e3HQ7BGQPtJR9TnPJh0V01r4apoCtUSqC83PE\"" }
+        ]
+      }
+    },
+    {
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.api.globepay.space.",
+        "Type": "TXT",
+        "TTL": 300,
+        "ResourceRecords": [
+          { "Value": "\"2T_z8hGVGWVUayY7aJsp3oD8B7SODAkoVaolQjgzFt4\"" }
+        ]
+      }
+    },
+    {
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.app.globepay.space.",
+        "Type": "TXT",
+        "TTL": 300,
+        "ResourceRecords": [
+          { "Value": "\"cUagI4e3HQ7BGQPtJR9TnPJh0V01r4apoCtUSqC83PE\"" }
+        ]
+      }
+    }
+  ]
+}

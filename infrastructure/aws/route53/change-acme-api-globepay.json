@@ -1,0 +1,16 @@
+{
+  "Comment": "Add ACME DNS-01 TXT record for api.globepay.space",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.api.globepay.space.",
+        "Type": "TXT",
+        "TTL": 300,
+        "ResourceRecords": [
+          { "Value": "\"2T_z8hGVGWVUayY7aJsp3oD8B7SODAkoVaolQjgzFt4\"" }
+        ]
+      }
+    }
+  ]
+}
