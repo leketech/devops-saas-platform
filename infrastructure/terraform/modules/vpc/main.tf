@@ -14,27 +14,9 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Disable default VPC resources
-resource "aws_default_vpc" "default" {
-  enable_dns_hostnames = false
-  enable_dns_support   = false
-
-  tags = {
-    Name = "Default VPC"
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-resource "aws_default_security_group" "default" {
-  vpc_id = aws_default_vpc.default.id
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
+# Ensure default VPC is not used
+# The aws_default_vpc resource is not allowed by security standards
+# Instead, we create our own VPC with proper security configurations
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
@@ -102,8 +84,8 @@ resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block      = "0.0.0.0/0"
-    gateway_id      = aws_internet_gateway.main.id
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
   }
 
   tags = {

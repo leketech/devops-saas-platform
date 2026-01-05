@@ -18,5 +18,5 @@ variable "flow_logs_retention" {
 variable "map_public_ip_on_launch" {
   description = "Whether to map public IP on launch for public subnets"
   type        = bool
-  default     = false  # Set to false for security
+  default     = false # Set to false for security
 }

@@ -49,13 +49,13 @@ resource "aws_security_group" "cluster_security_group" {
 }
 
 resource "aws_security_group_rule" "cluster_ingress_workstation_https" {
-  description              = "Allow workstation to communicate with the cluster API"
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  cidr_blocks              = var.cluster_endpoint_public_access_cidrs
-  security_group_id        = aws_security_group.cluster_security_group.id
+  description       = "Allow workstation to communicate with the cluster API"
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = var.cluster_endpoint_public_access_cidrs
+  security_group_id = aws_security_group.cluster_security_group.id
 }
 
 # EKS Cluster (Private Endpoint)
@@ -71,6 +71,13 @@ resource "aws_eks_cluster" "main" {
     security_group_ids      = [aws_security_group.cluster_security_group.id]
   }
 
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.eks_secrets.arn
+    }
+    resources = ["secrets"]
+  }
+
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   depends_on = [
@@ -81,6 +88,22 @@ resource "aws_eks_cluster" "main" {
   tags = {
     Name = var.cluster_name
   }
+}
+
+# KMS Key for EKS Secrets Encryption
+resource "aws_kms_key" "eks_secrets" {
+  description             = "KMS key for EKS secrets encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Name = "${var.cluster_name}-eks-secrets-key"
+  }
+}
+
+resource "aws_kms_alias" "eks_secrets" {
+  name          = "alias/${var.cluster_name}-eks-secrets-key"
+  target_key_id = aws_kms_key.eks_secrets.key_id
 }
 
 # CloudWatch Log Group for EKS
@@ -205,6 +228,7 @@ resource "aws_security_group" "node_security_group" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = var.node_security_group_egress_cidrs
+    description = "Allow all outbound traffic to specified CIDR blocks"
   }
 
   tags = {
