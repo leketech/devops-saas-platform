@@ -228,8 +228,8 @@ resource "aws_security_group" "node_security_group" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-    description = "Allow HTTPS outbound traffic to VPC CIDR range"
+    cidr_blocks = var.node_security_group_egress_cidrs
+    description = "Allow HTTPS outbound traffic to specified CIDR range"
   }
 
   tags = {
