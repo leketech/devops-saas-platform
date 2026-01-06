@@ -50,7 +50,6 @@ jobs:
         exit-code: '1'
         ignore-unfixed: true
         severity: 'CRITICAL'
-        trivy-config: 'trivy.yaml'
       continue-on-error: false
 
     - name: Lint YAML files
