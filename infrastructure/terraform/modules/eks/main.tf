@@ -68,6 +68,7 @@ resource "aws_eks_cluster" "main" {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
     endpoint_public_access  = var.endpoint_public_access
+    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
     security_group_ids      = [aws_security_group.cluster_security_group.id]
   }
 
@@ -224,11 +225,11 @@ resource "aws_security_group" "node_security_group" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = var.node_security_group_egress_cidrs
-    description = "Allow all outbound traffic to specified CIDR blocks"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "Allow HTTPS outbound traffic to VPC CIDR range"
   }
 
   tags = {

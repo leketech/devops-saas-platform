@@ -98,6 +98,12 @@ variable "cluster_endpoint_public_access_cidrs" {
   default     = [] # Empty list for security - only set when public access is needed
 }
 
+variable "vpc_cidr" {
+  description = "VPC CIDR block for restricting security group egress"
+  type        = string
+  default     = "10.0.0.0/16"  # Default value, should be overridden in environment
+}
+
 variable "node_security_group_egress_cidrs" {
   description = "List of CIDR blocks for node security group egress rules"
   type        = list(string)

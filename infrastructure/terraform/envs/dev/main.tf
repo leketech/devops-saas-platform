@@ -12,6 +12,7 @@ module "eks" {
   kubernetes_version                   = "1.29"
   vpc_id                               = module.vpc.vpc_id
   subnet_ids                           = module.vpc.private_subnets
+  vpc_cidr                             = "10.10.0.0/16"  # Pass VPC CIDR for security group restrictions
   endpoint_public_access               = false
   cluster_endpoint_public_access_cidrs = [] # Explicitly set to empty for security
   environment                          = "dev"
