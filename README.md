@@ -1,8 +1,8 @@
 This repository contains a complete infrastructure and application codebase for a production-ready multi-tenant SaaS platform built on AWS EKS. The platform features automated CI/CD, comprehensive monitoring, security-first design, and cost optimization.
-![]()
+
 
 ## Architecture Overview
-https://github.com/leketech/devops-saas-platform/blob/782b8b056fdb7201ef6873e65fcaa301bf8a7b37/multi-saas%20project.jpeg
+![image alt](https://github.com/leketech/devops-saas-platform/blob/782b8b056fdb7201ef6873e65fcaa301bf8a7b37/multi-saas%20project.jpeg)
 The platform follows a cloud-native, microservices-based architecture with: 
 
 - **Application Layer**: Go-based multi-tenant API with JWT authentication  
@@ -277,3 +277,4 @@ The project is fully configured and ready for deployment with the following key 
 ## Usage
 
 The pipeline will automatically trigger on pushes to the main branch and on pull requests. For manual deployments, follow the infrastructure deployment steps outlined above. After infrastructure deployment, applications are deployed via ArgoCD GitOps.
+
