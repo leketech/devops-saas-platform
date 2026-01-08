@@ -355,3 +355,37 @@ resource "aws_launch_template" "node_template" {
     }
   }
 }
+
+# Kubernetes provider configuration requires cluster endpoint and authentication
+# This is typically configured outside the module
+
+# Create Kubernetes secrets for database connection
+resource "kubernetes_namespace" "platform" {
+  count = var.db_endpoint != "" ? 1 : 0
+  metadata {
+    name = "platform"
+    labels = {
+      name = "platform"
+    }
+  }
+
+  depends_on = [
+    aws_eks_cluster.main
+  ]
+}
+
+resource "kubernetes_secret" "database" {
+  count = var.db_endpoint != "" ? 1 : 0
+  metadata {
+    name      = "database-secret"
+    namespace = "platform"
+  }
+  data = {
+    DATABASE_URL = "postgres://${var.db_username}:${var.db_password}@${var.db_endpoint}:${var.db_port}/${var.db_name}"
+  }
+  type = "Opaque"
+
+  depends_on = [
+    kubernetes_namespace.platform
+  ]
+}
