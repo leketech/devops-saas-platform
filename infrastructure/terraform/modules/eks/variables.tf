@@ -91,3 +91,34 @@ variable "environment" {
   description = "Environment name"
   type        = string
 }
+
+variable "db_endpoint" {
+  description = "Database endpoint for the application"
+  type        = string
+  default     = ""
+}
+
+variable "db_name" {
+  description = "Database name for the application"
+  type        = string
+  default     = "saas_platform"
+}
+
+variable "db_username" {
+  description = "Database username for the application"
+  type        = string
+  default     = ""
+}
+
+variable "db_port" {
+  description = "Database port for the application"
+  type        = number
+  default     = 5432
+}
+
+variable "db_password" {
+  description = "Database password for the application"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

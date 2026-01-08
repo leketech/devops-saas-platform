@@ -49,13 +49,13 @@ resource "aws_security_group" "cluster_security_group" {
 }
 
 resource "aws_security_group_rule" "cluster_ingress_workstation_https" {
-  description              = "Allow workstation to communicate with the cluster API"
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  cidr_blocks              = ["0.0.0.0/0"]
-  security_group_id        = aws_security_group.cluster_security_group.id
+  description       = "Allow workstation to communicate with the cluster API"
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.cluster_security_group.id
 }
 
 # EKS Cluster (Private Endpoint)
@@ -326,4 +326,38 @@ resource "aws_launch_template" "node_template" {
       Name = "${var.cluster_name}-volume"
     }
   }
+}
+
+# Kubernetes provider configuration requires cluster endpoint and authentication
+# This is typically configured outside the module
+
+# Create Kubernetes secrets for database connection
+resource "kubernetes_namespace" "platform" {
+  count = var.db_endpoint != "" ? 1 : 0
+  metadata {
+    name = "platform"
+    labels = {
+      name = "platform"
+    }
+  }
+
+  depends_on = [
+    aws_eks_cluster.main
+  ]
+}
+
+resource "kubernetes_secret" "database" {
+  count = var.db_endpoint != "" ? 1 : 0
+  metadata {
+    name      = "database-secret"
+    namespace = "platform"
+  }
+  data = {
+    DATABASE_URL = "postgres://${var.db_username}:${var.db_password}@${var.db_endpoint}:${var.db_port}/${var.db_name}"
+  }
+  type = "Opaque"
+
+  depends_on = [
+    kubernetes_namespace.platform
+  ]
 }

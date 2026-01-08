@@ -16,12 +16,12 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id = aws_route53_zone.globepay.zone_id
+  zone_id         = aws_route53_zone.globepay.zone_id
   allow_overwrite = true
-  name    = each.value.name
-  type    = each.value.type
-  ttl     = 300
-  records = [each.value.record]
+  name            = each.value.name
+  type            = each.value.type
+  ttl             = 300
+  records         = [each.value.record]
 }
 
 resource "aws_acm_certificate_validation" "globepay" {
