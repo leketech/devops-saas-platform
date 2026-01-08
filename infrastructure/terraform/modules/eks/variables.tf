@@ -122,3 +122,15 @@ variable "db_password" {
   default     = ""
   sensitive   = true
 }
+
+variable "cluster_endpoint_public_access_cidrs" {
+  description = "List of CIDR blocks to allow access to the EKS cluster endpoint when public access is enabled"
+  type        = list(string)
+  default     = [] # Empty list for security - only set when public access is needed
+}
+
+variable "node_security_group_egress_cidrs" {
+  description = "List of CIDR blocks for node security group egress rules"
+  type        = list(string)
+  default     = ["10.0.0.0/8"] # Default to VPC range, should be overridden in environment
+}

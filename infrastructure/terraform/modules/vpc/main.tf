@@ -14,27 +14,9 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Disable default VPC resources
-resource "aws_default_vpc" "default" {
-  enable_dns_hostnames = false
-  enable_dns_support   = false
-
-  tags = {
-    Name = "Default VPC"
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-resource "aws_default_security_group" "default" {
-  vpc_id = aws_default_vpc.default.id
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
+# Ensure default VPC is not used
+# The aws_default_vpc resource is not allowed by security standards
+# Instead, we create our own VPC with proper security configurations
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
@@ -51,7 +33,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(var.vpc_cidr, 4, count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = var.map_public_ip_on_launch # Only set to true for resources that require public IPs (e.g., NAT gateways)
 
   tags = {
     Name = "${var.environment}-public-subnet-${count.index + 1}"

@@ -54,7 +54,7 @@ resource "aws_security_group_rule" "cluster_ingress_workstation_https" {
   from_port         = 443
   to_port           = 443
   protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks       = var.cluster_endpoint_public_access_cidrs
   security_group_id = aws_security_group.cluster_security_group.id
 }
 
@@ -68,7 +68,15 @@ resource "aws_eks_cluster" "main" {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
     endpoint_public_access  = var.endpoint_public_access
+    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
     security_group_ids      = [aws_security_group.cluster_security_group.id]
+  }
+
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.eks_secrets.arn
+    }
+    resources = ["secrets"]
   }
 
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
@@ -81,6 +89,22 @@ resource "aws_eks_cluster" "main" {
   tags = {
     Name = var.cluster_name
   }
+}
+
+# KMS Key for EKS Secrets Encryption
+resource "aws_kms_key" "eks_secrets" {
+  description             = "KMS key for EKS secrets encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Name = "${var.cluster_name}-eks-secrets-key"
+  }
+}
+
+resource "aws_kms_alias" "eks_secrets" {
+  name          = "alias/${var.cluster_name}-eks-secrets-key"
+  target_key_id = aws_kms_key.eks_secrets.key_id
 }
 
 # CloudWatch Log Group for EKS
@@ -173,12 +197,15 @@ resource "aws_iam_role_policy" "cluster_autoscaler" {
           "autoscaling:SetDesiredCapacity",
           "autoscaling:TerminateInstanceInAutoScalingGroup"
         ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-          }
-        }
+        Resource = aws_eks_node_group.on_demand.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
+        Resource = aws_eks_node_group.spot.arn
       }
     ]
   })
@@ -198,10 +225,11 @@ resource "aws_security_group" "node_security_group" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.node_security_group_egress_cidrs
+    description = "Allow HTTPS outbound traffic to specified CIDR range"
   }
 
   tags = {
